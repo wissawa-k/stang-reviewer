@@ -52,6 +52,10 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  #mobile-bank-anchor {
+    display: none;
+  }
+
   .map-wrap {
     position: relative;
     width: 100%;
@@ -165,6 +169,7 @@
     display: grid;
     place-items: center;
     pointer-events: none;
+    overflow: hidden;
   }
 
   .side-panel {
@@ -356,6 +361,11 @@
       max-height: 72vh;
     }
 
+    #mobile-bank-anchor {
+      display: block;
+      margin-top: 10px;
+    }
+
     .chip {
       font-size: 16px;
       padding: 9px 12px;
@@ -376,6 +386,7 @@
       <div class="map-wrap" id="map-wrap">
         <img id="map" alt="Thailand rivers map">
       </div>
+      <div id="mobile-bank-anchor"></div>
     </section>
 
     <aside class="panel side-panel">
@@ -392,6 +403,7 @@
 
       <div id="status">Loading data...</div>
 
+      <div id="desktop-bank-anchor"></div>
       <div id="bank-section">
         <p id="bank-title" class="bank-title">Labels to drag</p>
         <div id="bank" aria-label="River labels bank"></div>
@@ -781,10 +793,13 @@ const mapWrap = document.getElementById("map-wrap");
 const bank = document.getElementById("bank");
 const bankSection = document.getElementById("bank-section");
 const bankTitle = document.getElementById("bank-title");
+const desktopBankAnchor = document.getElementById("desktop-bank-anchor");
+const mobileBankAnchor = document.getElementById("mobile-bank-anchor");
 const statusEl = document.getElementById("status");
 const titleEl = document.getElementById("review-title");
 const hintEl = document.getElementById("review-hint");
 const modeBadgeEl = document.getElementById("mode-badge");
+const mobileLayoutQuery = window.matchMedia("(max-width: 980px)");
 
 const checkBtn = document.getElementById("check-btn");
 const shuffleBtn = document.getElementById("shuffle-btn");
@@ -877,6 +892,7 @@ function removeChipFromZone(chip) {
 
   delete chip.dataset.zoneId;
   chip.classList.remove("in-slot");
+  chip.style.removeProperty("font-size");
 }
 
 function moveChipToBank(chip) {
@@ -896,7 +912,37 @@ function placeChipInZone(chip, zone) {
   chip.dataset.zoneId = zone.dataset.id;
   chip.classList.add("in-slot");
   zone.querySelector(".slot").appendChild(chip);
+  requestAnimationFrame(() => fitChipText(chip));
   clearSelectedChip();
+}
+
+function relocateBankSection() {
+  const target = mobileLayoutQuery.matches ? mobileBankAnchor : desktopBankAnchor;
+  if (target && bankSection.parentElement !== target) {
+    target.appendChild(bankSection);
+  }
+}
+
+function fitChipText(chip) {
+  if (!chip || !chip.classList.contains("in-slot")) return;
+
+  const maxFont = mobileLayoutQuery.matches ? 12 : 13;
+  const minFont = 7;
+  chip.style.fontSize = `${maxFont}px`;
+
+  let size = maxFont;
+  let attempts = 0;
+  while ((chip.scrollWidth > chip.clientWidth || chip.scrollHeight > chip.clientHeight) && size > minFont && attempts < 24) {
+    size -= 0.5;
+    chip.style.fontSize = `${size}px`;
+    attempts += 1;
+  }
+}
+
+function fitAllPlacedChips() {
+  chips.forEach((chip) => {
+    fitChipText(chip);
+  });
 }
 
 function updateProgressText() {
@@ -1177,6 +1223,7 @@ async function init() {
     hintEl.textContent = `Drag each ${modeConfig.label.toLowerCase()} label into the numbered box on the map. On mobile, you can also tap a label, then tap a box.`;
     bankTitle.textContent = `${modeConfig.label} labels to drag`;
     bankSection.classList.remove("hidden");
+    relocateBankSection();
     shuffleBtn.disabled = false;
     shuffleBtn.title = "";
     resetBtn.textContent = "Reset";
@@ -1212,6 +1259,11 @@ async function init() {
 checkBtn.addEventListener("click", runCheck);
 resetBtn.addEventListener("click", resetBoard);
 shuffleBtn.addEventListener("click", shuffleBank);
+mobileLayoutQuery.addEventListener("change", () => {
+  relocateBankSection();
+  fitAllPlacedChips();
+});
+window.addEventListener("resize", fitAllPlacedChips);
 
 init().catch((error) => {
   setStatus(`Failed to load data: ${error.message}`);
