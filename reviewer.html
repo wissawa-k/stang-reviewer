@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thailand Map Drag-and-Drop Reviewer</title>
+<style>
+  :root {
+    --bg: #f2efe7;
+    --panel: #fffaf0;
+    --ink: #25211b;
+    --accent: #2e6f5e;
+    --accent-soft: #d7e7de;
+    --warn: #c1543d;
+    --ok: #2f7d32;
+    --line: #bdb29f;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: "Sarabun", "Noto Sans Thai", "Tahoma", sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 12% 10%, #fff7df 0%, rgba(255, 247, 223, 0) 42%),
+      radial-gradient(circle at 90% 92%, #deeee7 0%, rgba(222, 238, 231, 0) 38%),
+      var(--bg);
+  }
+
+  .app {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 18px;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 8px 20px rgba(45, 40, 32, 0.08);
+  }
+
+  .map-panel {
+    padding: 12px;
+  }
+
+  .map-wrap {
+    position: relative;
+    width: 100%;
+  }
+
+  #map {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    border: 1px solid #d7cdba;
+    background: white;
+  }
+
+  .drop-zone {
+    position: absolute;
+    border: 1.8px dashed rgba(46, 111, 94, 0.65);
+    border-radius: 6px;
+    background: rgba(215, 231, 222, 0.32);
+    padding: 1px;
+    transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease, border-color 120ms ease;
+  }
+
+  .drop-zone.active {
+    background: rgba(215, 231, 222, 0.82);
+    transform: scale(1.03);
+    box-shadow: 0 0 0 2px rgba(46, 111, 94, 0.2);
+  }
+
+  .drop-zone.correct {
+    border: 3px solid rgba(47, 125, 50, 0.95);
+    background: rgba(47, 125, 50, 0.32);
+    box-shadow: 0 0 0 3px rgba(47, 125, 50, 0.28);
+    animation: pop-ok 220ms ease;
+  }
+
+  .drop-zone.incorrect {
+    border: 3px solid rgba(193, 84, 61, 0.98);
+    background: rgba(193, 84, 61, 0.3);
+    box-shadow: 0 0 0 3px rgba(193, 84, 61, 0.24);
+    animation: shake-no 260ms ease;
+  }
+
+  .drop-zone.correct::after,
+  .drop-zone.incorrect::after {
+    position: absolute;
+    right: -1px;
+    top: -20px;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    font-weight: 800;
+    color: #fff;
+    border-radius: 4px;
+    padding: 2px 6px;
+  }
+
+  .drop-zone.correct::after {
+    content: "CORRECT";
+    background: rgba(47, 125, 50, 0.98);
+  }
+
+  .drop-zone.incorrect::after {
+    content: "WRONG";
+    background: rgba(193, 84, 61, 0.98);
+  }
+
+  .drop-zone.correct .chip.in-slot {
+    background: #eef9ef;
+    border-color: rgba(47, 125, 50, 0.85);
+    font-weight: 700;
+  }
+
+  .drop-zone.incorrect .chip.in-slot {
+    background: #fff0ec;
+    border-color: rgba(193, 84, 61, 0.85);
+    font-weight: 700;
+  }
+
+  @keyframes pop-ok {
+    0% { transform: scale(0.96); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes shake-no {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    50% { transform: translateX(3px); }
+    75% { transform: translateX(-2px); }
+    100% { transform: translateX(0); }
+  }
+
+  .zone-num {
+    position: absolute;
+    top: -12px;
+    left: -12px;
+    width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--panel);
+    background: var(--accent);
+    pointer-events: none;
+  }
+
+  .slot {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+  }
+
+  .side-panel {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.2;
+  }
+
+  .menu-link {
+    color: #5f5341;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
+    width: fit-content;
+  }
+
+  .menu-link:hover {
+    color: #332b21;
+    text-decoration: underline;
+  }
+
+  .hint {
+    margin: 0;
+    color: #4f4639;
+    line-height: 1.45;
+    font-size: 14px;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  button {
+    border: 1px solid #b5ab96;
+    background: #f9f4e6;
+    color: var(--ink);
+    border-radius: 9px;
+    padding: 8px 10px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #f4ecd9;
+  }
+
+  #status {
+    padding: 9px 10px;
+    border-radius: 8px;
+    border: 1px solid #d3c8b3;
+    background: #fffdf7;
+    font-size: 14px;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+  }
+
+  #bank {
+    border: 1px dashed #b5ab96;
+    border-radius: 10px;
+    background: #fdf8ec;
+    min-height: 140px;
+    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-content: flex-start;
+  }
+
+  .chip {
+    padding: 6px 9px;
+    border-radius: 999px;
+    border: 1px solid #a59b88;
+    background: white;
+    font-size: 14px;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    white-space: nowrap;
+    transition: box-shadow 120ms ease, transform 120ms ease;
+  }
+
+  .chip.in-slot {
+    cursor: grab;
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
+    text-align: center;
+    display: grid;
+    place-items: center;
+    font-size: clamp(11px, 1.7vw, 15px);
+    border: 1px solid #8f856f;
+    background: #fffefa;
+    padding: 0 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .chip.dragging {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    box-shadow: 0 10px 20px rgba(18, 18, 18, 0.22);
+    transform: rotate(-1deg);
+  }
+
+  @media (max-width: 980px) {
+    .app {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+</head>
+<body>
+  <main class="app">
+    <section class="panel map-panel">
+      <div class="map-wrap" id="map-wrap">
+        <img id="map" alt="Thailand rivers map">
+      </div>
+    </section>
+
+    <aside class="panel side-panel">
+      <h1 id="review-title">Map Reviewer</h1>
+      <p id="review-hint" class="hint">Drag each label into the numbered box on the map. You can move any label again at any time.</p>
+      <a class="menu-link" href="index.html">← Back to choices</a>
+
+      <div class="controls">
+        <button id="check-btn" type="button">Check</button>
+        <button id="shuffle-btn" type="button">Shuffle</button>
+        <button id="reset-btn" type="button">Reset</button>
+      </div>
+
+      <div id="status">Loading data...</div>
+
+      <div id="bank" aria-label="River labels bank"></div>
+    </aside>
+  </main>
+
+<script id="embedded-rivers-data" type="application/json">
+{
+  "image": "rivers.png",
+  "boxes": [
+    {
+      "id": 1,
+      "answer": "สาละวิน",
+      "x": 13.0576,
+      "y": 11.0638,
+      "width": 8.3709,
+      "height": 2.1064
+    },
+    {
+      "id": 2,
+      "answer": "โขง",
+      "x": 44.8872,
+      "y": 16.9362,
+      "width": 8.3709,
+      "height": 2.1064
+    },
+    {
+      "id": 3,
+      "answer": "วัง",
+      "x": 18.4461,
+      "y": 16.9362,
+      "width": 8.2456,
+      "height": 2.2766
+    },
+    {
+      "id": 4,
+      "answer": "ยม",
+      "x": 24.4612,
+      "y": 19.234,
+      "width": 8.3709,
+      "height": 2.1915
+    },
+    {
+      "id": 5,
+      "answer": "น่าน",
+      "x": 27.8446,
+      "y": 21.8723,
+      "width": 7.995,
+      "height": 2.4468
+    },
+    {
+      "id": 6,
+      "answer": "เลย",
+      "x": 41.2531,
+      "y": 24.2553,
+      "width": 8.4962,
+      "height": 2.3617
+    },
+    {
+      "id": 7,
+      "answer": "ปาย",
+      "x": 11.8045,
+      "y": 20,
+      "width": 8.3709,
+      "height": 2.1915
+    },
+    {
+      "id": 8,
+      "answer": "ปิง",
+      "x": 12.3058,
+      "y": 22.9787,
+      "width": 8.6216,
+      "height": 2.1064
+    },
+    {
+      "id": 9,
+      "answer": "เมย",
+      "x": 10.5514,
+      "y": 30.5532,
+      "width": 7.995,
+      "height": 2.2766
+    },
+    {
+      "id": 10,
+      "answer": "ป่าสัก",
+      "x": 35.1128,
+      "y": 31.234,
+      "width": 8.3709,
+      "height": 2.1915
+    },
+    {
+      "id": 11,
+      "answer": "เจ้าพระยา",
+      "x": 32.6065,
+      "y": 37.2766,
+      "width": 10.8772,
+      "height": 2.1915
+    },
+    {
+      "id": 12,
+      "answer": "สะแกกรัง",
+      "x": 19.0727,
+      "y": 33.1915,
+      "width": 9.8747,
+      "height": 2.1915
+    },
+    {
+      "id": 13,
+      "answer": "ท่าจีน",
+      "x": 20.7018,
+      "y": 39.234,
+      "width": 10.5013,
+      "height": 2.2766
+    },
+    {
+      "id": 14,
+      "answer": "แควใหญ่",
+      "x": 5.2882,
+      "y": 35.3191,
+      "width": 10.3759,
+      "height": 2.2766
+    },
+    {
+      "id": 15,
+      "answer": "แควน้อย",
+      "x": 3.2832,
+      "y": 38.7234,
+      "width": 10.8772,
+      "height": 2.2766
+    },
+    {
+      "id": 16,
+      "answer": "แม่กลอง",
+      "x": 21.0777,
+      "y": 47.3191,
+      "width": 10.8772,
+      "height": 2.1915
+    },
+    {
+      "id": 17,
+      "answer": "เพชรบุรี",
+      "x": 26.7168,
+      "y": 50.8085,
+      "width": 10.3759,
+      "height": 2.2766
+    },
+    {
+      "id": 18,
+      "answer": "ปราณบุรี",
+      "x": 30.8521,
+      "y": 54.4681,
+      "width": 10.2506,
+      "height": 1.9362
+    },
+    {
+      "id": 19,
+      "answer": "ตะนาวศรี",
+      "x": 10.5514,
+      "y": 52.2553,
+      "width": 10.5013,
+      "height": 2.3617
+    },
+    {
+      "id": 20,
+      "answer": "",
+      "x": 10.6767,
+      "y": 62.8085,
+      "width": 2.8571,
+      "height": 2.3617
+    },
+    {
+      "id": 21,
+      "answer": "คีรีรัฐ",
+      "x": 6.416,
+      "y": 67.7447,
+      "width": 11.1278,
+      "height": 2.1915
+    },
+    {
+      "id": 22,
+      "answer": "ตาปี",
+      "x": 11.8045,
+      "y": 71.0638,
+      "width": 10.6266,
+      "height": 2.1064
+    },
+    {
+      "id": 23,
+      "answer": "ตรัง",
+      "x": 27.8446,
+      "y": 73.5319,
+      "width": 10.7519,
+      "height": 2.1064
+    },
+    {
+      "id": 24,
+      "answer": "ปัตตานี",
+      "x": 37.2431,
+      "y": 81.7021,
+      "width": 10.6266,
+      "height": 2.2766
+    },
+    {
+      "id": 25,
+      "answer": "บางประกง",
+      "x": 43.3835,
+      "y": 42.5532,
+      "width": 10.8772,
+      "height": 2.2766
+    },
+    {
+      "id": 26,
+      "answer": "จันทบุรี",
+      "x": 33.8596,
+      "y": 48.8511,
+      "width": 11.1278,
+      "height": 1.9362
+    },
+    {
+      "id": 27,
+      "answer": "มูล",
+      "x": 54.2857,
+      "y": 35.234,
+      "width": 8.1203,
+      "height": 2.2766
+    },
+    {
+      "id": 28,
+      "answer": "ชี",
+      "x": 52.5313,
+      "y": 29.7872,
+      "width": 8.3709,
+      "height": 2.1064
+    },
+    {
+      "id": 29,
+      "answer": "สงคราม",
+      "x": 50.1504,
+      "y": 24.3404,
+      "width": 7.995,
+      "height": 2.1064
+    }
+  ]
+}
+</script>
+
+<script id="embedded-mountains-data" type="application/json">
+{
+  "image": "mountains.png",
+  "boxes": [
+    {
+      "id": 1,
+      "answer": "แดนลาว",
+      "x": 9.1511,
+      "y": 10.3531,
+      "width": 18.0745,
+      "height": 2.6682
+    },
+    {
+      "id": 2,
+      "answer": "ขุนตาล(ผีปันน้ำตะวันตก)",
+      "x": 34.5135,
+      "y": 10.4863,
+      "width": 32.8778,
+      "height": 2.2685
+    },
+    {
+      "id": 3,
+      "answer": "ผีปันน้ำกลาง",
+      "x": 38.6542,
+      "y": 13.2179,
+      "width": 33.6025,
+      "height": 2.8015
+    },
+    {
+      "id": 4,
+      "answer": "ผีปันน้ำตะวันออก",
+      "x": 43.0021,
+      "y": 17.5483,
+      "width": 33.706,
+      "height": 2.535
+    },
+    {
+      "id": 5,
+      "answer": "หลวงพระบาง",
+      "x": 42.1739,
+      "y": 20.946,
+      "width": 33.706,
+      "height": 2.4017
+    },
+    {
+      "id": 6,
+      "answer": "ถนนธงชัย",
+      "x": 5.735,
+      "y": 30.8061,
+      "width": 11.9669,
+      "height": 2.6016
+    },
+    {
+      "id": 7,
+      "answer": "ภูพาน",
+      "x": 61.5321,
+      "y": 27.0753,
+      "width": 33.6025,
+      "height": 2.6016
+    },
+    {
+      "id": 8,
+      "answer": "เพชรบูรณ์",
+      "x": 23.0228,
+      "y": 30.7395,
+      "width": 12.0704,
+      "height": 2.7348
+    },
+    {
+      "id": 9,
+      "answer": "สันกำแพง",
+      "x": 42.2774,
+      "y": 36.469,
+      "width": 23.0435,
+      "height": 2.6016
+    },
+    {
+      "id": 10,
+      "answer": "พนมดงรัก",
+      "x": 62.7743,
+      "y": 44.7968,
+      "width": 34.0166,
+      "height": 2.6682
+    },
+    {
+      "id": 11,
+      "answer": "ตะนาวศรี",
+      "x": 0.8696,
+      "y": 46.8621,
+      "width": 16.7288,
+      "height": 2.6682
+    },
+    {
+      "id": 12,
+      "answer": "จันทบุรี",
+      "x": 44.6584,
+      "y": 46.3957,
+      "width": 16.4182,
+      "height": 2.6682
+    },
+    {
+      "id": 13,
+      "answer": "บรรทัด",
+      "x": 55.6315,
+      "y": 55.2565,
+      "width": 23.8716,
+      "height": 2.6682
+    },
+    {
+      "id": 14,
+      "answer": "ภูเก็ต",
+      "x": 1.6977,
+      "y": 69.7801,
+      "width": 14.0373,
+      "height": 2.4017
+    },
+    {
+      "id": 15,
+      "answer": "นครศรีธรรมราช",
+      "x": 30.0621,
+      "y": 74.3105,
+      "width": 18.1781,
+      "height": 2.4684
+    },
+    {
+      "id": 16,
+      "answer": "ทิวเขาสันกาลาคีรี",
+      "x": 39.2754,
+      "y": 80.04,
+      "width": 20.4555,
+      "height": 2.4684
+    }
+  ]
+}
+</script>
+
+<script>
+const mapEl = document.getElementById("map");
+const mapWrap = document.getElementById("map-wrap");
+const bank = document.getElementById("bank");
+const statusEl = document.getElementById("status");
+const titleEl = document.getElementById("review-title");
+const hintEl = document.getElementById("review-hint");
+
+const checkBtn = document.getElementById("check-btn");
+const shuffleBtn = document.getElementById("shuffle-btn");
+const resetBtn = document.getElementById("reset-btn");
+
+let boxes = [];
+let chips = [];
+let dragging = null;
+let activeZone = null;
+
+const reviewModes = {
+  rivers: {
+    label: "River",
+    json: "rivers.json",
+    embeddedId: "embedded-rivers-data"
+  },
+  mountains: {
+    label: "Mountain",
+    json: "mountains.json",
+    embeddedId: "embedded-mountains-data"
+  }
+};
+
+const params = new URLSearchParams(window.location.search);
+const requestedMode = params.get("mode");
+if (!reviewModes[requestedMode]) {
+  window.location.replace("index.html");
+}
+const activeMode = reviewModes[requestedMode] ? requestedMode : "rivers";
+
+function shuffleArray(list) {
+  const copy = [...list];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function clearResults() {
+  mapWrap.querySelectorAll(".drop-zone").forEach((zone) => {
+    zone.classList.remove("correct", "incorrect");
+  });
+}
+
+function setStatus(text) {
+  statusEl.textContent = text;
+}
+
+function zoneById(id) {
+  return mapWrap.querySelector(`.drop-zone[data-id="${id}"]`);
+}
+
+function chipById(id) {
+  return chips.find((chip) => chip.dataset.id === String(id));
+}
+
+function removeChipFromZone(chip) {
+  const zoneId = chip.dataset.zoneId;
+  if (!zoneId) return;
+
+  const zone = zoneById(zoneId);
+  if (zone) {
+    delete zone.dataset.chipId;
+  }
+
+  delete chip.dataset.zoneId;
+  chip.classList.remove("in-slot");
+}
+
+function moveChipToBank(chip) {
+  removeChipFromZone(chip);
+  bank.appendChild(chip);
+}
+
+function placeChipInZone(chip, zone) {
+  const existingId = zone.dataset.chipId;
+  if (existingId && existingId !== chip.dataset.id) {
+    const oldChip = chipById(existingId);
+    if (oldChip) moveChipToBank(oldChip);
+  }
+
+  removeChipFromZone(chip);
+
+  zone.dataset.chipId = chip.dataset.id;
+  chip.dataset.zoneId = zone.dataset.id;
+  chip.classList.add("in-slot");
+  zone.querySelector(".slot").appendChild(chip);
+}
+
+function updateProgressText() {
+  const placed = chips.filter((chip) => chip.dataset.zoneId).length;
+  setStatus(`Placed ${placed}/${chips.length} labels`);
+}
+
+function createZone(box) {
+  const zone = document.createElement("div");
+  zone.className = "drop-zone";
+  zone.dataset.id = String(box.id);
+  zone.dataset.answer = box.answer;
+  zone.style.left = `${box.x}%`;
+  zone.style.top = `${box.y}%`;
+  zone.style.width = `${box.width}%`;
+  zone.style.height = `${box.height}%`;
+
+  const badge = document.createElement("div");
+  badge.className = "zone-num";
+  badge.textContent = String(box.id);
+
+  const slot = document.createElement("div");
+  slot.className = "slot";
+
+  zone.appendChild(badge);
+  zone.appendChild(slot);
+  mapWrap.appendChild(zone);
+}
+
+function beginDrag(event) {
+  const chip = event.currentTarget;
+  event.preventDefault();
+
+  const rect = chip.getBoundingClientRect();
+  dragging = {
+    chip,
+    offsetX: event.clientX - rect.left,
+    offsetY: event.clientY - rect.top
+  };
+
+  chip.classList.add("dragging");
+  chip.style.width = `${rect.width}px`;
+  chip.style.height = `${rect.height}px`;
+  chip.style.left = `${rect.left}px`;
+  chip.style.top = `${rect.top}px`;
+  document.body.appendChild(chip);
+
+  chip.setPointerCapture(event.pointerId);
+}
+
+function moveDrag(event) {
+  if (!dragging) return;
+
+  const x = event.clientX - dragging.offsetX;
+  const y = event.clientY - dragging.offsetY;
+  dragging.chip.style.left = `${x}px`;
+  dragging.chip.style.top = `${y}px`;
+
+  const target = document
+    .elementFromPoint(event.clientX, event.clientY)
+    ?.closest(".drop-zone");
+
+  if (activeZone && activeZone !== target) {
+    activeZone.classList.remove("active");
+  }
+
+  activeZone = target || null;
+  if (activeZone) activeZone.classList.add("active");
+}
+
+function endDrag(event) {
+  if (!dragging) return;
+
+  const target = document
+    .elementFromPoint(event.clientX, event.clientY)
+    ?.closest(".drop-zone");
+
+  if (activeZone) {
+    activeZone.classList.remove("active");
+    activeZone = null;
+  }
+
+  dragging.chip.classList.remove("dragging");
+  dragging.chip.style.removeProperty("left");
+  dragging.chip.style.removeProperty("top");
+  dragging.chip.style.removeProperty("width");
+  dragging.chip.style.removeProperty("height");
+
+  if (target) {
+    placeChipInZone(dragging.chip, target);
+  } else {
+    moveChipToBank(dragging.chip);
+  }
+
+  dragging.chip.releasePointerCapture(event.pointerId);
+  dragging = null;
+  clearResults();
+  updateProgressText();
+}
+
+function createChip(box) {
+  const chip = document.createElement("button");
+  chip.className = "chip";
+  chip.type = "button";
+  chip.textContent = box.answer;
+  chip.dataset.id = String(box.id);
+  chip.dataset.answer = box.answer;
+  chip.addEventListener("pointerdown", beginDrag);
+  chip.addEventListener("pointermove", moveDrag);
+  chip.addEventListener("pointerup", endDrag);
+  chip.addEventListener("pointercancel", endDrag);
+  return chip;
+}
+
+function renderChips(shuffledBoxes) {
+  bank.innerHTML = "";
+  chips = shuffledBoxes.map(createChip);
+  chips.forEach((chip) => bank.appendChild(chip));
+}
+
+function runCheck() {
+  let correct = 0;
+
+  boxes.forEach((box) => {
+    const zone = zoneById(box.id);
+    if (!zone) return;
+
+    zone.classList.remove("correct", "incorrect");
+    const chipId = zone.dataset.chipId;
+    if (!chipId) return;
+
+    const chip = chipById(chipId);
+    if (!chip) return;
+
+    if (chip.dataset.answer === box.answer) {
+      zone.classList.add("correct");
+      correct += 1;
+    } else {
+      zone.classList.add("incorrect");
+    }
+  });
+
+  if (correct === boxes.length) {
+    setStatus(`Perfect! ${correct}/${boxes.length} correct`);
+  } else {
+    setStatus(`Score: ${correct}/${boxes.length} correct`);
+  }
+}
+
+function resetBoard() {
+  chips.forEach((chip) => {
+    moveChipToBank(chip);
+  });
+  clearResults();
+  updateProgressText();
+}
+
+function shuffleBank() {
+  const inBank = chips.filter((chip) => !chip.dataset.zoneId);
+  const ordered = shuffleArray(inBank);
+  ordered.forEach((chip) => bank.appendChild(chip));
+}
+
+async function loadReviewData(modeConfig) {
+  try {
+    const response = await fetch(modeConfig.json, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Could not load ${modeConfig.json} (${response.status})`);
+    }
+    return await response.json();
+  } catch (fetchError) {
+    const embedded = document.getElementById(modeConfig.embeddedId);
+    const embeddedText = embedded ? embedded.textContent.trim() : "";
+    if (!embeddedText) {
+      throw fetchError;
+    }
+
+    try {
+      setStatus("Using embedded data because rivers.json could not be fetched");
+      return JSON.parse(embeddedText);
+    } catch (parseError) {
+      throw new Error(`Failed to parse embedded data: ${parseError.message}`);
+    }
+  }
+}
+
+async function init() {
+  const modeConfig = reviewModes[activeMode];
+  titleEl.textContent = `${modeConfig.label} Map Reviewer`;
+  hintEl.textContent = `Drag each ${modeConfig.label.toLowerCase()} label into the numbered box on the map. You can move any label again at any time.`;
+
+  const data = await loadReviewData(modeConfig);
+  mapEl.src = data.image || "rivers.png";
+
+  await new Promise((resolve) => {
+    mapEl.onload = resolve;
+    if (mapEl.complete) resolve();
+  });
+
+  boxes = (data.boxes || []).filter((box) => (box.answer || "").trim() !== "");
+
+  boxes.forEach(createZone);
+  renderChips(shuffleArray(boxes));
+  updateProgressText();
+}
+
+checkBtn.addEventListener("click", runCheck);
+resetBtn.addEventListener("click", resetBoard);
+shuffleBtn.addEventListener("click", shuffleBank);
+
+init().catch((error) => {
+  setStatus(`Failed to load data: ${error.message}`);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Map Review Choice</title>
+  <style>
+    :root {
+      --bg: #f1eee6;
+      --ink: #2c261d;
+      --card: #fffaf0;
+      --line: #c9bda8;
+      --river: #2e6f5e;
+      --mountain: #8a5b2b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      color: var(--ink);
+      font-family: "Sarabun", "Noto Sans Thai", "Tahoma", sans-serif;
+      background:
+        radial-gradient(circle at 15% 15%, #fff4da 0%, rgba(255, 244, 218, 0) 42%),
+        radial-gradient(circle at 85% 85%, #e2ebe7 0%, rgba(226, 235, 231, 0) 36%),
+        var(--bg);
+      padding: 20px;
+    }
+
+    .panel {
+      width: min(880px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      box-shadow: 0 12px 32px rgba(51, 43, 31, 0.12);
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(24px, 4vw, 36px);
+    }
+
+    p {
+      margin: 0 0 18px;
+      color: #5a4e3e;
+      line-height: 1.5;
+    }
+
+    .choices {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .choice {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fffdf7;
+      padding: 16px;
+      transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+    }
+
+    .choice:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(49, 41, 29, 0.11);
+    }
+
+    .choice h2 {
+      margin: 0 0 6px;
+      font-size: 22px;
+    }
+
+    .choice p {
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .choice.river:hover { border-color: var(--river); }
+    .choice.mountain:hover { border-color: var(--mountain); }
+
+    .pill {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .river .pill { background: var(--river); }
+    .mountain .pill { background: var(--mountain); }
+
+    @media (max-width: 760px) {
+      .choices { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <h1>Choose a Review</h1>
+    <p>Pick which map practice you want to start. You can switch anytime by coming back to this page.</p>
+
+    <div class="choices">
+      <a class="choice river" href="reviewer.html?mode=rivers">
+        <h2>River Review</h2>
+        <p>Match river names with numbered locations on the Thailand map.</p>
+        <span class="pill">RIVERS</span>
+      </a>
+
+      <a class="choice mountain" href="reviewer.html?mode=mountains">
+        <h2>Mountain Review</h2>
+        <p>Match mountain range names with numbered locations on the map.</p>
+        <span class="pill">MOUNTAINS</span>
+      </a>
+    </div>
+  </main>
+</body>
+</html>
