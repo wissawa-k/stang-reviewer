@@ -178,6 +178,18 @@
     line-height: 1.2;
   }
 
+  .mode-badge {
+    display: inline-block;
+    width: fit-content;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    background: #ebe2cf;
+    color: #4a3f31;
+  }
+
   .menu-link {
     color: #5f5341;
     text-decoration: none;
@@ -242,6 +254,17 @@
     align-content: flex-start;
   }
 
+  #bank-section.hidden {
+    display: none;
+  }
+
+  .bank-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #5a4e3f;
+  }
+
   .chip {
     padding: 6px 9px;
     border-radius: 999px;
@@ -279,6 +302,36 @@
     transform: rotate(-1deg);
   }
 
+  .zone-input {
+    width: 100%;
+    height: 100%;
+    border: 1px solid #9a907d;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.93);
+    color: #2a241d;
+    font: inherit;
+    font-size: clamp(11px, 1.4vw, 14px);
+    padding: 1px 3px;
+    text-align: center;
+  }
+
+  .zone-input:focus {
+    outline: 2px solid rgba(46, 111, 94, 0.45);
+    border-color: rgba(46, 111, 94, 0.9);
+  }
+
+  .drop-zone.correct .zone-input {
+    background: #eefdef;
+    border-color: rgba(47, 125, 50, 0.9);
+    font-weight: 700;
+  }
+
+  .drop-zone.incorrect .zone-input {
+    background: #fff0ec;
+    border-color: rgba(193, 84, 61, 0.9);
+    font-weight: 700;
+  }
+
   @media (max-width: 980px) {
     .app {
       grid-template-columns: 1fr;
@@ -296,6 +349,7 @@
 
     <aside class="panel side-panel">
       <h1 id="review-title">Map Reviewer</h1>
+      <span id="mode-badge" class="mode-badge">Mode</span>
       <p id="review-hint" class="hint">Drag each label into the numbered box on the map. You can move any label again at any time.</p>
       <a class="menu-link" href="index.html">← Back to choices</a>
 
@@ -307,7 +361,10 @@
 
       <div id="status">Loading data...</div>
 
-      <div id="bank" aria-label="River labels bank"></div>
+      <div id="bank-section">
+        <p id="bank-title" class="bank-title">Labels to drag</p>
+        <div id="bank" aria-label="River labels bank"></div>
+      </div>
     </aside>
   </main>
 
@@ -691,9 +748,12 @@
 const mapEl = document.getElementById("map");
 const mapWrap = document.getElementById("map-wrap");
 const bank = document.getElementById("bank");
+const bankSection = document.getElementById("bank-section");
+const bankTitle = document.getElementById("bank-title");
 const statusEl = document.getElementById("status");
 const titleEl = document.getElementById("review-title");
 const hintEl = document.getElementById("review-hint");
+const modeBadgeEl = document.getElementById("mode-badge");
 
 const checkBtn = document.getElementById("check-btn");
 const shuffleBtn = document.getElementById("shuffle-btn");
@@ -717,12 +777,29 @@ const reviewModes = {
   }
 };
 
+const answerModes = {
+  drag: {
+    label: "Drag and Drop"
+  },
+  type: {
+    label: "Type It Yourself"
+  }
+};
+
 const params = new URLSearchParams(window.location.search);
 const requestedMode = params.get("mode");
-if (!reviewModes[requestedMode]) {
+const requestedAnswerMode = params.get("answerMode");
+
+if (!reviewModes[requestedMode] || !answerModes[requestedAnswerMode]) {
   window.location.replace("index.html");
 }
+
 const activeMode = reviewModes[requestedMode] ? requestedMode : "rivers";
+const activeAnswerMode = answerModes[requestedAnswerMode] ? requestedAnswerMode : "drag";
+
+function normalizeAnswer(value) {
+  return value.trim().replace(/\s+/g, " ");
+}
 
 function shuffleArray(list) {
   const copy = [...list];
@@ -777,7 +854,6 @@ function placeChipInZone(chip, zone) {
   }
 
   removeChipFromZone(chip);
-
   zone.dataset.chipId = chip.dataset.id;
   chip.dataset.zoneId = zone.dataset.id;
   chip.classList.add("in-slot");
@@ -785,8 +861,32 @@ function placeChipInZone(chip, zone) {
 }
 
 function updateProgressText() {
-  const placed = chips.filter((chip) => chip.dataset.zoneId).length;
-  setStatus(`Placed ${placed}/${chips.length} labels`);
+  if (activeAnswerMode === "drag") {
+    const placed = chips.filter((chip) => chip.dataset.zoneId).length;
+    setStatus(`Placed ${placed}/${chips.length} labels`);
+    return;
+  }
+
+  const typedInputs = mapWrap.querySelectorAll(".zone-input");
+  let filled = 0;
+  typedInputs.forEach((input) => {
+    if (normalizeAnswer(input.value) !== "") {
+      filled += 1;
+    }
+  });
+  setStatus(`Filled ${filled}/${boxes.length} answers`);
+}
+
+function focusNextInput(currentId) {
+  const currentIndex = boxes.findIndex((item) => item.id === currentId);
+  const next = boxes[currentIndex + 1];
+  if (!next) return;
+  const nextZone = zoneById(next.id);
+  const nextInput = nextZone ? nextZone.querySelector(".zone-input") : null;
+  if (nextInput) {
+    nextInput.focus();
+    nextInput.select();
+  }
 }
 
 function createZone(box) {
@@ -802,16 +902,37 @@ function createZone(box) {
   const badge = document.createElement("div");
   badge.className = "zone-num";
   badge.textContent = String(box.id);
-
-  const slot = document.createElement("div");
-  slot.className = "slot";
-
   zone.appendChild(badge);
-  zone.appendChild(slot);
+
+  if (activeAnswerMode === "drag") {
+    const slot = document.createElement("div");
+    slot.className = "slot";
+    zone.appendChild(slot);
+  } else {
+    const input = document.createElement("input");
+    input.className = "zone-input";
+    input.type = "text";
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    input.dataset.id = String(box.id);
+    input.addEventListener("input", () => {
+      clearResults();
+      updateProgressText();
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        focusNextInput(box.id);
+      }
+    });
+    zone.appendChild(input);
+  }
+
   mapWrap.appendChild(zone);
 }
 
 function beginDrag(event) {
+  if (activeAnswerMode !== "drag") return;
   const chip = event.currentTarget;
   event.preventDefault();
 
@@ -828,22 +949,18 @@ function beginDrag(event) {
   chip.style.left = `${rect.left}px`;
   chip.style.top = `${rect.top}px`;
   document.body.appendChild(chip);
-
   chip.setPointerCapture(event.pointerId);
 }
 
 function moveDrag(event) {
-  if (!dragging) return;
+  if (!dragging || activeAnswerMode !== "drag") return;
 
   const x = event.clientX - dragging.offsetX;
   const y = event.clientY - dragging.offsetY;
   dragging.chip.style.left = `${x}px`;
   dragging.chip.style.top = `${y}px`;
 
-  const target = document
-    .elementFromPoint(event.clientX, event.clientY)
-    ?.closest(".drop-zone");
-
+  const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".drop-zone");
   if (activeZone && activeZone !== target) {
     activeZone.classList.remove("active");
   }
@@ -853,12 +970,9 @@ function moveDrag(event) {
 }
 
 function endDrag(event) {
-  if (!dragging) return;
+  if (!dragging || activeAnswerMode !== "drag") return;
 
-  const target = document
-    .elementFromPoint(event.clientX, event.clientY)
-    ?.closest(".drop-zone");
-
+  const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".drop-zone");
   if (activeZone) {
     activeZone.classList.remove("active");
     activeZone = null;
@@ -908,15 +1022,30 @@ function runCheck() {
   boxes.forEach((box) => {
     const zone = zoneById(box.id);
     if (!zone) return;
-
     zone.classList.remove("correct", "incorrect");
-    const chipId = zone.dataset.chipId;
-    if (!chipId) return;
 
-    const chip = chipById(chipId);
-    if (!chip) return;
+    if (activeAnswerMode === "drag") {
+      const chipId = zone.dataset.chipId;
+      if (!chipId) return;
+      const chip = chipById(chipId);
+      if (!chip) return;
 
-    if (chip.dataset.answer === box.answer) {
+      if (chip.dataset.answer === box.answer) {
+        zone.classList.add("correct");
+        correct += 1;
+      } else {
+        zone.classList.add("incorrect");
+      }
+      return;
+    }
+
+    const input = zone.querySelector(".zone-input");
+    if (!input) return;
+    const typed = normalizeAnswer(input.value);
+    const expected = normalizeAnswer(box.answer);
+
+    if (typed === "") return;
+    if (typed === expected) {
       zone.classList.add("correct");
       correct += 1;
     } else {
@@ -932,14 +1061,21 @@ function runCheck() {
 }
 
 function resetBoard() {
-  chips.forEach((chip) => {
-    moveChipToBank(chip);
-  });
   clearResults();
+  if (activeAnswerMode === "drag") {
+    chips.forEach((chip) => {
+      moveChipToBank(chip);
+    });
+  } else {
+    mapWrap.querySelectorAll(".zone-input").forEach((input) => {
+      input.value = "";
+    });
+  }
   updateProgressText();
 }
 
 function shuffleBank() {
+  if (activeAnswerMode !== "drag") return;
   const inBank = chips.filter((chip) => !chip.dataset.zoneId);
   const ordered = shuffleArray(inBank);
   ordered.forEach((chip) => bank.appendChild(chip));
@@ -960,7 +1096,7 @@ async function loadReviewData(modeConfig) {
     }
 
     try {
-      setStatus("Using embedded data because rivers.json could not be fetched");
+      setStatus(`Using embedded data because ${modeConfig.json} could not be fetched`);
       return JSON.parse(embeddedText);
     } catch (parseError) {
       throw new Error(`Failed to parse embedded data: ${parseError.message}`);
@@ -970,8 +1106,25 @@ async function loadReviewData(modeConfig) {
 
 async function init() {
   const modeConfig = reviewModes[activeMode];
+  const answerConfig = answerModes[activeAnswerMode];
+
   titleEl.textContent = `${modeConfig.label} Map Reviewer`;
-  hintEl.textContent = `Drag each ${modeConfig.label.toLowerCase()} label into the numbered box on the map. You can move any label again at any time.`;
+  modeBadgeEl.textContent = answerConfig.label;
+
+  if (activeAnswerMode === "drag") {
+    hintEl.textContent = `Drag each ${modeConfig.label.toLowerCase()} label into the numbered box on the map. You can move any label again at any time.`;
+    bankTitle.textContent = `${modeConfig.label} labels to drag`;
+    bankSection.classList.remove("hidden");
+    shuffleBtn.disabled = false;
+    shuffleBtn.title = "";
+    resetBtn.textContent = "Reset";
+  } else {
+    hintEl.textContent = `Type each ${modeConfig.label.toLowerCase()} name directly in the numbered box. Press Enter to jump to the next box.`;
+    bankSection.classList.add("hidden");
+    shuffleBtn.disabled = true;
+    shuffleBtn.title = "Shuffle is only available in drag mode";
+    resetBtn.textContent = "Clear";
+  }
 
   const data = await loadReviewData(modeConfig);
   mapEl.src = data.image || "rivers.png";
@@ -981,10 +1134,16 @@ async function init() {
     if (mapEl.complete) resolve();
   });
 
-  boxes = (data.boxes || []).filter((box) => (box.answer || "").trim() !== "");
-
+  boxes = (data.boxes || []).filter((box) => normalizeAnswer(box.answer || "") !== "");
   boxes.forEach(createZone);
-  renderChips(shuffleArray(boxes));
+
+  if (activeAnswerMode === "drag") {
+    renderChips(shuffleArray(boxes));
+  } else {
+    const firstInput = mapWrap.querySelector(".zone-input");
+    if (firstInput) firstInput.focus();
+  }
+
   updateProgressText();
 }
 

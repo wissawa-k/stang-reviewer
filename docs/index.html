@@ -12,6 +12,8 @@
       --line: #c9bda8;
       --river: #2e6f5e;
       --mountain: #8a5b2b;
+      --mode-a: #2f6e60;
+      --mode-b: #6c4b22;
     }
 
     * { box-sizing: border-box; }
@@ -31,7 +33,7 @@
     }
 
     .panel {
-      width: min(880px, 100%);
+      width: min(980px, 100%);
       border: 1px solid var(--line);
       border-radius: 16px;
       background: var(--card);
@@ -44,27 +46,41 @@
       font-size: clamp(24px, 4vw, 36px);
     }
 
-    p {
-      margin: 0 0 18px;
+    .lead {
+      margin: 0 0 16px;
       color: #5a4e3e;
       line-height: 1.5;
+    }
+
+    .step {
+      margin-bottom: 18px;
+      padding: 14px;
+      border: 1px solid #d7ccba;
+      border-radius: 12px;
+      background: #fffdf7;
+    }
+
+    .step h2 {
+      margin: 0 0 10px;
+      font-size: 20px;
     }
 
     .choices {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
+      gap: 12px;
     }
 
     .choice {
-      display: block;
-      text-decoration: none;
-      color: inherit;
       border: 1px solid var(--line);
       border-radius: 12px;
-      background: #fffdf7;
-      padding: 16px;
+      background: #fffaf2;
+      padding: 14px;
+      cursor: pointer;
+      text-align: left;
       transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+      color: inherit;
+      font: inherit;
     }
 
     .choice:hover {
@@ -72,31 +88,95 @@
       box-shadow: 0 8px 20px rgba(49, 41, 29, 0.11);
     }
 
-    .choice h2 {
-      margin: 0 0 6px;
+    .choice h3 {
+      margin: 0 0 4px;
       font-size: 22px;
     }
 
     .choice p {
       margin: 0;
+      color: #594f40;
       font-size: 14px;
+      line-height: 1.45;
     }
 
-    .choice.river:hover { border-color: var(--river); }
-    .choice.mountain:hover { border-color: var(--mountain); }
+    .choice.river:hover,
+    .choice.river.selected {
+      border-color: var(--river);
+      box-shadow: 0 0 0 2px rgba(46, 111, 94, 0.15);
+    }
 
-    .pill {
-      display: inline-block;
-      margin-top: 12px;
-      padding: 4px 8px;
-      border-radius: 999px;
-      font-size: 12px;
+    .choice.mountain:hover,
+    .choice.mountain.selected {
+      border-color: var(--mountain);
+      box-shadow: 0 0 0 2px rgba(138, 91, 43, 0.15);
+    }
+
+    #mode-step[hidden] { display: none; }
+
+    .mode-card {
+      border: 1px solid #cfc4b1;
+      border-radius: 12px;
+      background: #fffcf4;
+      padding: 14px;
+    }
+
+    .mode-card h3 {
+      margin: 0 0 8px;
+      font-size: 20px;
+    }
+
+    .note {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: #4d4335;
+      line-height: 1.45;
+    }
+
+    .pro {
+      color: #1f5e51;
       font-weight: 700;
-      color: #fff;
     }
 
-    .river .pill { background: var(--river); }
-    .mountain .pill { background: var(--mountain); }
+    .con {
+      color: #8a3d2f;
+      font-weight: 700;
+    }
+
+    .start-btn {
+      border: 1px solid #b8ad98;
+      background: #f4ecda;
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .start-btn:hover { background: #efe4cd; }
+
+    .back-btn {
+      margin-top: 10px;
+      border: 1px solid #c9bda8;
+      background: #fff8e7;
+      color: #4f4335;
+      border-radius: 10px;
+      padding: 7px 11px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .back-btn:hover { background: #f7efd9; }
+
+    .mode-card.drag h3 { color: var(--mode-a); }
+    .mode-card.type h3 { color: var(--mode-b); }
+
+    #selected-topic {
+      font-weight: 700;
+      color: #453a2c;
+    }
 
     @media (max-width: 760px) {
       .choices { grid-template-columns: 1fr; }
@@ -106,21 +186,81 @@
 <body>
   <main class="panel">
     <h1>Choose a Review</h1>
-    <p>Pick which map practice you want to start. You can switch anytime by coming back to this page.</p>
+    <p class="lead">Step 1: pick a map type. Step 2: choose how you want to answer.</p>
 
-    <div class="choices">
-      <a class="choice river" href="reviewer.html?mode=rivers">
-        <h2>River Review</h2>
-        <p>Match river names with numbered locations on the Thailand map.</p>
-        <span class="pill">RIVERS</span>
-      </a>
+    <section class="step">
+      <h2>1) Pick Topic</h2>
+      <div class="choices">
+        <button class="choice river" type="button" data-topic="rivers" data-topic-label="River">
+          <h3>River Review</h3>
+          <p>Match river names with numbered locations on the Thailand map.</p>
+        </button>
 
-      <a class="choice mountain" href="reviewer.html?mode=mountains">
-        <h2>Mountain Review</h2>
-        <p>Match mountain range names with numbered locations on the map.</p>
-        <span class="pill">MOUNTAINS</span>
-      </a>
-    </div>
+        <button class="choice mountain" type="button" data-topic="mountains" data-topic-label="Mountain">
+          <h3>Mountain Review</h3>
+          <p>Match mountain range names with numbered locations on the map.</p>
+        </button>
+      </div>
+    </section>
+
+    <section id="mode-step" class="step" hidden>
+      <h2>2) Pick Answer Mode for <span id="selected-topic"></span></h2>
+      <div class="choices">
+        <article class="mode-card drag">
+          <h3>Drag and Drop</h3>
+          <p class="note"><span class="pro">Pro:</span> Faster each round, good for quick review.</p>
+          <p class="note"><span class="con">Con:</span> Usually less effective for spelling practice because you choose from ready-made labels.</p>
+          <button id="start-drag" class="start-btn" type="button">Start Drag and Drop</button>
+        </article>
+
+        <article class="mode-card type">
+          <h3>Type It Yourself</h3>
+          <p class="note"><span class="pro">Pro:</span> Better spelling practice because you must type each answer yourself.</p>
+          <p class="note"><span class="con">Con:</span> Each iteration takes more time.</p>
+          <button id="start-type" class="start-btn" type="button">Start Type It Yourself</button>
+        </article>
+      </div>
+      <button id="back-to-topic" class="back-btn" type="button">Back to topic selection</button>
+    </section>
   </main>
+
+  <script>
+    const topicButtons = document.querySelectorAll("[data-topic]");
+    const modeStep = document.getElementById("mode-step");
+    const selectedTopicEl = document.getElementById("selected-topic");
+    const startDragBtn = document.getElementById("start-drag");
+    const startTypeBtn = document.getElementById("start-type");
+    const backToTopicBtn = document.getElementById("back-to-topic");
+    let selectedTopic = null;
+
+    function selectTopic(button) {
+      topicButtons.forEach((item) => item.classList.remove("selected"));
+      button.classList.add("selected");
+
+      selectedTopic = button.dataset.topic;
+      selectedTopicEl.textContent = `${button.dataset.topicLabel} Review`;
+      modeStep.hidden = false;
+    }
+
+    function startReview(answerMode) {
+      if (!selectedTopic) return;
+      const target = `reviewer.html?mode=${encodeURIComponent(selectedTopic)}&answerMode=${encodeURIComponent(answerMode)}`;
+      window.location.href = target;
+    }
+
+    topicButtons.forEach((button) => {
+      button.addEventListener("click", () => selectTopic(button));
+    });
+
+    backToTopicBtn.addEventListener("click", () => {
+      selectedTopic = null;
+      selectedTopicEl.textContent = "";
+      modeStep.hidden = true;
+      topicButtons.forEach((item) => item.classList.remove("selected"));
+    });
+
+    startDragBtn.addEventListener("click", () => startReview("drag"));
+    startTypeBtn.addEventListener("click", () => startReview("type"));
+  </script>
 </body>
 </html>
