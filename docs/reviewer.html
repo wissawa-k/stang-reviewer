@@ -168,7 +168,7 @@
     height: 100%;
     display: grid;
     place-items: center;
-    pointer-events: none;
+    pointer-events: auto;
     overflow: hidden;
   }
 
@@ -363,7 +363,7 @@
 
     #mobile-bank-anchor {
       display: block;
-      margin-top: 10px;
+      margin-bottom: 10px;
     }
 
     .chip {
@@ -386,10 +386,10 @@
       <div class="map-wrap" id="map-wrap">
         <img id="map" alt="Thailand rivers map">
       </div>
-      <div id="mobile-bank-anchor"></div>
     </section>
 
     <aside class="panel side-panel">
+      <div id="mobile-bank-anchor"></div>
       <h1 id="review-title">Map Reviewer</h1>
       <span id="mode-badge" class="mode-badge">Mode</span>
       <p id="review-hint" class="hint">Drag each label into the numbered box on the map. You can move any label again at any time.</p>
