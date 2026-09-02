@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>River Map Answer Editor</title>
+<style>
+    * { box-sizing: border-box; }
+
+    body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #111;
+        color: #eee;
+    }
+
+    header {
+        padding: 14px 18px;
+        background: #1b1b1b;
+        border-bottom: 1px solid #333;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    header h1 {
+        font-size: 18px;
+        margin: 0 20px 0 0;
+    }
+
+    button, input {
+        font: inherit;
+    }
+
+    button {
+        border: 1px solid #555;
+        background: #2a2a2a;
+        color: white;
+        padding: 7px 12px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    button:hover { background: #383838; }
+
+    #workspace {
+        display: flex;
+        height: calc(100vh - 65px);
+        overflow: hidden;
+    }
+
+    #map-scroll {
+        flex: 1;
+        overflow: auto;
+        padding: 25px;
+        background: #151515;
+    }
+
+    #map-wrapper {
+        position: relative;
+        width: max-content;
+        margin: auto;
+        user-select: none;
+    }
+
+    #map {
+        display: block;
+        max-width: none;
+    }
+
+    .answer-box {
+        position: absolute;
+        border: 2px solid #00d4ff;
+        background: rgba(0, 212, 255, 0.15);
+        cursor: move;
+        min-width: 30px;
+        min-height: 20px;
+    }
+
+    .answer-box.selected {
+        border-color: #00ff88;
+        background: rgba(0, 255, 136, 0.18);
+    }
+
+    .answer-label {
+        position: absolute;
+        left: 2px;
+        top: -22px;
+        background: #111;
+        color: white;
+        padding: 2px 5px;
+        font-size: 12px;
+        white-space: nowrap;
+        pointer-events: none;
+    }
+
+    .resize-handle {
+        position: absolute;
+        right: -5px;
+        bottom: -5px;
+        width: 10px;
+        height: 10px;
+        background: white;
+        border: 1px solid #111;
+        cursor: nwse-resize;
+    }
+
+    #sidebar {
+        width: 350px;
+        min-width: 350px;
+        background: #1b1b1b;
+        border-left: 1px solid #333;
+        padding: 16px;
+        overflow-y: auto;
+    }
+
+    #sidebar h2 {
+        font-size: 16px;
+        margin: 0 0 12px;
+    }
+
+    #instructions {
+        color: #aaa;
+        font-size: 13px;
+        line-height: 1.5;
+        margin-bottom: 15px;
+    }
+
+    #selected-info {
+        display: none;
+        padding: 12px;
+        background: #252525;
+        border-radius: 6px;
+        margin-bottom: 15px;
+    }
+
+    #selected-info input {
+        width: 100%;
+        background: #111;
+        color: white;
+        border: 1px solid #555;
+        padding: 7px;
+        border-radius: 4px;
+        margin: 5px 0 10px;
+    }
+
+    .field-label {
+        font-size: 12px;
+        color: #aaa;
+    }
+
+    #box-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .list-item {
+        padding: 9px;
+        background: #252525;
+        border-radius: 5px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .list-item:hover { background: #303030; }
+
+    .list-item small {
+        color: #888;
+    }
+
+    #output {
+        width: 100%;
+        min-height: 260px;
+        resize: vertical;
+        background: #0d0d0d;
+        color: #ddd;
+        border: 1px solid #444;
+        border-radius: 5px;
+        padding: 10px;
+        font-family: monospace;
+        font-size: 12px;
+    }
+
+    .danger { color: #ff7777; }
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>🌊 Rivers Map Editor</h1>
+    <button id="add-btn">＋ Add Answer Box</button>
+    <button id="delete-btn">Delete Selected</button>
+    <button id="clear-btn">Clear All</button>
+    <button id="export-btn">Export JSON</button>
+    <button id="copy-btn">Copy JSON</button>
+</header>
+
+<div id="workspace">
+
+    <div id="map-scroll">
+        <div id="map-wrapper">
+            <img id="map" src="rivers.png" alt="rivers map">
+        </div>
+    </div>
+
+    <aside id="sidebar">
+
+        <h2>Answer Boxes</h2>
+
+        <div id="instructions">
+            Click <b>Add Answer Box</b>, then drag on the map to position it.
+            Drag the white corner to resize it.
+            Select a box and enter its correct answer.
+            <br><br>
+            Coordinates are automatically stored as percentages, so the
+            reviewer still works when the map is resized.
+        </div>
+
+        <div id="selected-info">
+            <div class="field-label">Correct answer</div>
+            <input id="answer-input" type="text" placeholder="e.g. Amazon River">
+
+            <div class="field-label">Position</div>
+            <div id="position-info"></div>
+
+            <br>
+            <button id="apply-btn">Apply Answer</button>
+        </div>
+
+        <div id="box-list"></div>
+
+        <h2 style="margin-top:20px;">Export</h2>
+        <textarea id="output" readonly></textarea>
+
+    </aside>
+</div>
+
+<script>
+const map = document.getElementById("map");
+const wrapper = document.getElementById("map-wrapper");
+const boxList = document.getElementById("box-list");
+const selectedInfo = document.getElementById("selected-info");
+const answerInput = document.getElementById("answer-input");
+const positionInfo = document.getElementById("position-info");
+const output = document.getElementById("output");
+
+let boxes = [];
+let selectedId = null;
+let nextId = 1;
+let action = null;
+
+map.addEventListener("load", () => {
+    wrapper.style.width = map.naturalWidth + "px";
+    wrapper.style.height = map.naturalHeight + "px";
+});
+
+function addBox() {
+    const id = nextId++;
+
+    const box = {
+        id,
+        answer: "",
+        x: 40,
+        y: 40,
+        width: 10,
+        height: 5
+    };
+
+    boxes.push(box);
+    selectedId = id;
+    render();
+}
+
+function getSelected() {
+    return boxes.find(b => b.id === selectedId);
+}
+
+function selectBox(id) {
+    selectedId = id;
+    render();
+}
+
+function deleteSelected() {
+    if (selectedId === null) return;
+
+    boxes = boxes.filter(b => b.id !== selectedId);
+    selectedId = null;
+    render();
+}
+
+function clearAll() {
+    if (!confirm("Delete all answer boxes?")) return;
+
+    boxes = [];
+    selectedId = null;
+    render();
+}
+
+function render() {
+    document.querySelectorAll(".answer-box").forEach(el => el.remove());
+
+    boxes.forEach(box => {
+        const el = document.createElement("div");
+        el.className = "answer-box";
+        if (box.id === selectedId) el.classList.add("selected");
+
+        el.dataset.id = box.id;
+
+        el.style.left = box.x + "%";
+        el.style.top = box.y + "%";
+        el.style.width = box.width + "%";
+        el.style.height = box.height + "%";
+
+        const label = document.createElement("div");
+        label.className = "answer-label";
+        label.textContent = box.answer || "#" + box.id;
+
+        const handle = document.createElement("div");
+        handle.className = "resize-handle";
+
+        el.appendChild(label);
+        el.appendChild(handle);
+        wrapper.appendChild(el);
+
+        el.addEventListener("mousedown", e => {
+            if (e.target === handle) {
+                startResize(e, box);
+            } else {
+                startMove(e, box);
+            }
+        });
+
+        el.addEventListener("click", e => {
+            e.stopPropagation();
+            selectBox(box.id);
+        });
+    });
+
+    renderSidebar();
+}
+
+function renderSidebar() {
+    const box = getSelected();
+
+    if (box) {
+        selectedInfo.style.display = "block";
+        answerInput.value = box.answer;
+
+        positionInfo.innerHTML =
+            `X: ${box.x.toFixed(2)}%<br>` +
+            `Y: ${box.y.toFixed(2)}%<br>` +
+            `Width: ${box.width.toFixed(2)}%<br>` +
+            `Height: ${box.height.toFixed(2)}%`;
+
+        answerInput.focus();
+    } else {
+        selectedInfo.style.display = "none";
+    }
+
+    boxList.innerHTML = "";
+
+    boxes.forEach(b => {
+        const item = document.createElement("div");
+        item.className = "list-item";
+
+        const name = document.createElement("span");
+        name.textContent = b.answer || `Box #${b.id}`;
+
+        const coords = document.createElement("small");
+        coords.textContent = `${b.x.toFixed(1)}%, ${b.y.toFixed(1)}%`;
+
+        item.appendChild(name);
+        item.appendChild(coords);
+
+        item.onclick = () => selectBox(b.id);
+
+        boxList.appendChild(item);
+    });
+
+    output.value = JSON.stringify(getExportData(), null, 2);
+}
+
+function startMove(e, box) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    selectedId = box.id;
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const originalX = box.x;
+    const originalY = box.y;
+
+    action = { type: "move", box, startX, startY, originalX, originalY };
+
+    document.addEventListener("mousemove", handleAction);
+    document.addEventListener("mouseup", endAction);
+}
+
+function startResize(e, box) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    selectedId = box.id;
+
+    action = {
+        type: "resize",
+        box,
+        startX: e.clientX,
+        startY: e.clientY,
+        originalWidth: box.width,
+        originalHeight: box.height
+    };
+
+    document.addEventListener("mousemove", handleAction);
+    document.addEventListener("mouseup", endAction);
+}
+
+function handleAction(e) {
+    if (!action) return;
+
+    const rect = map.getBoundingClientRect();
+
+    const dx = (e.clientX - action.startX) / rect.width * 100;
+    const dy = (e.clientY - action.startY) / rect.height * 100;
+
+    if (action.type === "move") {
+        action.box.x = Math.max(
+            0,
+            Math.min(
+                100 - action.box.width,
+                action.originalX + dx
+            )
+        );
+
+        action.box.y = Math.max(
+            0,
+            Math.min(
+                100 - action.box.height,
+                action.originalY + dy
+            )
+        );
+    }
+
+    if (action.type === "resize") {
+        action.box.width = Math.max(
+            1,
+            Math.min(
+                100 - action.box.x,
+                action.originalWidth + dx
+            )
+        );
+
+        action.box.height = Math.max(
+            1,
+            Math.min(
+                100 - action.box.y,
+                action.originalHeight + dy
+            )
+        );
+    }
+
+    render();
+}
+
+function endAction() {
+    action = null;
+    document.removeEventListener("mousemove", handleAction);
+    document.removeEventListener("mouseup", endAction);
+}
+
+function getExportData() {
+    return {
+        image: "rivers.png",
+        boxes: boxes.map(b => ({
+            id: b.id,
+            answer: b.answer,
+            x: Number(b.x.toFixed(4)),
+            y: Number(b.y.toFixed(4)),
+            width: Number(b.width.toFixed(4)),
+            height: Number(b.height.toFixed(4))
+        }))
+    };
+}
+
+document.getElementById("add-btn").onclick = addBox;
+document.getElementById("delete-btn").onclick = deleteSelected;
+document.getElementById("clear-btn").onclick = clearAll;
+
+document.getElementById("apply-btn").onclick = () => {
+    const box = getSelected();
+    if (!box) return;
+
+    box.answer = answerInput.value.trim();
+    render();
+};
+
+answerInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+        document.getElementById("apply-btn").click();
+    }
+});
+
+document.getElementById("export-btn").onclick = () => {
+    const data = JSON.stringify(getExportData(), null, 2);
+
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "rivers-answers.json";
+    a.click();
+
+    URL.revokeObjectURL(url);
+};
+
+document.getElementById("copy-btn").onclick = async () => {
+    await navigator.clipboard.writeText(output.value);
+
+    const btn = document.getElementById("copy-btn");
+    const old = btn.textContent;
+    btn.textContent = "Copied!";
+    setTimeout(() => btn.textContent = old, 1000);
+};
+
+wrapper.addEventListener("click", e => {
+    if (e.target === map || e.target === wrapper) {
+        selectedId = null;
+        render();
+    }
+});
+
+document.addEventListener("keydown", e => {
+    if (e.key === "Delete" && selectedId !== null) {
+        deleteSelected();
+    }
+});
+
+render();
+</script>
+
+</body>
+</html>
