@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Province Slogan Review</title>
+  <style>
+    :root {
+      --bg: #f3eee9;
+      --panel: #fffaf2;
+      --line: #c8bba8;
+      --ink: #28231c;
+      --ok: #2f7d32;
+      --bad: #bb4b34;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Sarabun", "Noto Sans Thai", "Tahoma", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 14% 11%, #fff5dd 0%, rgba(255, 245, 221, 0) 40%),
+        radial-gradient(circle at 90% 90%, #e4ece9 0%, rgba(228, 236, 233, 0) 36%),
+        var(--bg);
+      padding: 18px;
+    }
+
+    .panel {
+      width: min(920px, 100%);
+      margin: 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+      box-shadow: 0 12px 28px rgba(51, 41, 29, 0.1);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 4vw, 34px);
+      line-height: 1.15;
+    }
+
+    .sub {
+      margin: 0;
+      color: #5d5040;
+      line-height: 1.45;
+    }
+
+    .back-link {
+      width: fit-content;
+      color: #5a4d3d;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+      color: #3c3328;
+    }
+
+    .card {
+      border: 1px solid #d9ccbb;
+      border-radius: 12px;
+      background: #fffdf8;
+      padding: 14px;
+    }
+
+    .label {
+      margin: 0 0 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #645847;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    #province-name {
+      margin: 0;
+      font-size: clamp(28px, 5vw, 42px);
+      color: #4b3570;
+      line-height: 1.15;
+    }
+
+    #answer-input {
+      width: 100%;
+      min-height: 130px;
+      border: 1px solid #bdaf99;
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-size: 17px;
+      line-height: 1.5;
+      padding: 10px;
+      resize: vertical;
+    }
+
+    #answer-input:focus {
+      outline: 2px solid rgba(75, 53, 112, 0.32);
+      border-color: #7f63a5;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button {
+      border: 1px solid #b7aa95;
+      background: #f9f2e4;
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover { background: #f2e8d3; }
+
+    #status {
+      border: 1px solid #d1c5b2;
+      border-radius: 10px;
+      background: #fffdf8;
+      padding: 10px;
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      font-size: 15px;
+    }
+
+    #status.good {
+      border-color: rgba(47, 125, 50, 0.65);
+      background: rgba(47, 125, 50, 0.1);
+      color: #1f6523;
+      font-weight: 700;
+    }
+
+    #status.bad {
+      border-color: rgba(187, 75, 52, 0.7);
+      background: rgba(187, 75, 52, 0.1);
+      color: #7a2e1f;
+      font-weight: 700;
+    }
+
+    #correct-answer {
+      margin: 0;
+      display: none;
+      border: 1px solid rgba(187, 75, 52, 0.55);
+      border-radius: 10px;
+      background: rgba(187, 75, 52, 0.09);
+      padding: 10px;
+      line-height: 1.5;
+    }
+
+    #correct-answer strong {
+      color: #7a2e1f;
+    }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <h1>Province Slogan Review</h1>
+    <p class="sub">A random province slogan appears each round. Type the province name, then check your answer.</p>
+    <a class="back-link" href="index.html">← Back to choices</a>
+
+    <section class="card">
+      <p class="label">Slogan</p>
+      <h2 id="province-name">Loading...</h2>
+    </section>
+
+    <section class="card">
+      <p class="label">Type the province name</p>
+      <textarea id="answer-input" placeholder="พิมพ์ชื่อจังหวัดที่นี่..."></textarea>
+    </section>
+
+    <div class="controls">
+      <button id="check-btn" type="button">Check</button>
+      <button id="next-btn" type="button">Next Random Province</button>
+      <button id="clear-btn" type="button">Clear</button>
+    </div>
+
+    <div id="status">Loading province data...</div>
+    <p id="correct-answer"></p>
+  </main>
+
+  <script>
+    const provinceNameEl = document.getElementById("province-name");
+    const answerInputEl = document.getElementById("answer-input");
+    const statusEl = document.getElementById("status");
+    const correctAnswerEl = document.getElementById("correct-answer");
+
+    const checkBtn = document.getElementById("check-btn");
+    const nextBtn = document.getElementById("next-btn");
+    const clearBtn = document.getElementById("clear-btn");
+
+    let provinces = [];
+    let current = null;
+
+    function normalizeText(value) {
+      return value.trim().replace(/\s+/g, " ");
+    }
+
+    function normalizeProvinceName(value) {
+      return normalizeText(value).replace(/^จังหวัด\s*/u, "");
+    }
+
+    function randomProvince() {
+      const index = Math.floor(Math.random() * provinces.length);
+      return provinces[index];
+    }
+
+    function setStatus(text, tone = "") {
+      statusEl.classList.remove("good", "bad");
+      if (tone) {
+        statusEl.classList.add(tone);
+      }
+      statusEl.textContent = text;
+    }
+
+    function showRound(province) {
+      current = province;
+      provinceNameEl.textContent = province.slogan;
+      answerInputEl.value = "";
+      correctAnswerEl.style.display = "none";
+      correctAnswerEl.textContent = "";
+      setStatus("Type the province name, then press Check.");
+      answerInputEl.focus();
+    }
+
+    function runCheck() {
+      if (!current) return;
+
+      const typed = normalizeText(answerInputEl.value);
+      const expected = normalizeProvinceName(current.province);
+
+      if (!typed) {
+        setStatus("Please type an answer first.", "bad");
+        return;
+      }
+
+      if (normalizeProvinceName(typed) === expected) {
+        setStatus("Correct! Great recall.", "good");
+        correctAnswerEl.style.display = "none";
+        return;
+      }
+
+      setStatus("Not correct yet. The correct province name is shown below.", "bad");
+      correctAnswerEl.innerHTML = `<strong>Correct answer:</strong> ${current.province}`;
+      correctAnswerEl.style.display = "block";
+    }
+
+    function nextRound() {
+      if (!provinces.length) return;
+      showRound(randomProvince());
+    }
+
+    function clearAnswer() {
+      answerInputEl.value = "";
+      answerInputEl.focus();
+      setStatus("Answer cleared.");
+    }
+
+    async function init() {
+      const response = await fetch("province.json", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Could not load province.json (${response.status})`);
+      }
+
+      provinces = await response.json();
+      if (!Array.isArray(provinces) || provinces.length === 0) {
+        throw new Error("province.json is empty or invalid");
+      }
+
+      nextRound();
+    }
+
+    checkBtn.addEventListener("click", runCheck);
+    nextBtn.addEventListener("click", nextRound);
+    clearBtn.addEventListener("click", clearAnswer);
+
+    answerInputEl.addEventListener("keydown", (event) => {
+      if (event.ctrlKey && event.key === "Enter") {
+        runCheck();
+      }
+    });
+
+    init().catch((error) => {
+      setStatus(`Failed to load data: ${error.message}`, "bad");
+      provinceNameEl.textContent = "Load failed";
+    });
+  </script>
+</body>
+</html>

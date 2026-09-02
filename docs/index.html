@@ -67,7 +67,7 @@
 
     .choices {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 12px;
     }
 
@@ -110,6 +110,12 @@
     .choice.mountain.selected {
       border-color: var(--mountain);
       box-shadow: 0 0 0 2px rgba(138, 91, 43, 0.15);
+    }
+
+    .choice.province:hover,
+    .choice.province.selected {
+      border-color: #6a4a7f;
+      box-shadow: 0 0 0 2px rgba(106, 74, 127, 0.15);
     }
 
     #mode-step[hidden] { display: none; }
@@ -172,6 +178,9 @@
 
     .mode-card.drag h3 { color: var(--mode-a); }
     .mode-card.type h3 { color: var(--mode-b); }
+    .mode-card.province h3 { color: #5c3d72; }
+
+    .hidden { display: none; }
 
     #selected-topic {
       font-weight: 700;
@@ -200,6 +209,11 @@
           <h3>Mountain Review</h3>
           <p>Match mountain range names with numbered locations on the map.</p>
         </button>
+
+        <button class="choice province" type="button" data-topic="province" data-topic-label="Province Slogan">
+          <h3>Province Slogan</h3>
+          <p>Read a random province name and type its slogan from memory.</p>
+        </button>
       </div>
     </section>
 
@@ -219,6 +233,11 @@
           <p class="note"><span class="con">Con:</span> Each iteration takes more time.</p>
           <button id="start-type" class="start-btn" type="button">Start Type It Yourself</button>
         </article>
+
+        <article id="province-card" class="mode-card province hidden">
+          <h3>Default</h3>
+          <button id="start-province" class="start-btn" type="button">Start Default</button>
+        </article>
       </div>
       <button id="back-to-topic" class="back-btn" type="button">Back to topic selection</button>
     </section>
@@ -230,7 +249,11 @@
     const selectedTopicEl = document.getElementById("selected-topic");
     const startDragBtn = document.getElementById("start-drag");
     const startTypeBtn = document.getElementById("start-type");
+    const startProvinceBtn = document.getElementById("start-province");
     const backToTopicBtn = document.getElementById("back-to-topic");
+    const dragCard = document.querySelector(".mode-card.drag");
+    const typeCard = document.querySelector(".mode-card.type");
+    const provinceCard = document.getElementById("province-card");
     let selectedTopic = null;
 
     function selectTopic(button) {
@@ -240,12 +263,26 @@
       selectedTopic = button.dataset.topic;
       selectedTopicEl.textContent = `${button.dataset.topicLabel} Review`;
       modeStep.hidden = false;
+
+      if (selectedTopic === "province") {
+        dragCard.classList.add("hidden");
+        typeCard.classList.add("hidden");
+        provinceCard.classList.remove("hidden");
+      } else {
+        dragCard.classList.remove("hidden");
+        typeCard.classList.remove("hidden");
+        provinceCard.classList.add("hidden");
+      }
     }
 
     function startReview(answerMode) {
       if (!selectedTopic) return;
       const target = `reviewer.html?mode=${encodeURIComponent(selectedTopic)}&answerMode=${encodeURIComponent(answerMode)}`;
       window.location.href = target;
+    }
+
+    function startProvinceReview() {
+      window.location.href = "province-review.html";
     }
 
     topicButtons.forEach((button) => {
@@ -257,10 +294,14 @@
       selectedTopicEl.textContent = "";
       modeStep.hidden = true;
       topicButtons.forEach((item) => item.classList.remove("selected"));
+      dragCard.classList.remove("hidden");
+      typeCard.classList.remove("hidden");
+      provinceCard.classList.add("hidden");
     });
 
     startDragBtn.addEventListener("click", () => startReview("drag"));
     startTypeBtn.addEventListener("click", () => startReview("type"));
+    startProvinceBtn.addEventListener("click", startProvinceReview);
   </script>
 </body>
 </html>
