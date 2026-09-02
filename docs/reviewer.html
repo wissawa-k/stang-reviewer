@@ -48,6 +48,8 @@
 
   .map-panel {
     padding: 12px;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .map-wrap {
@@ -278,6 +280,12 @@
     transition: box-shadow 120ms ease, transform 120ms ease;
   }
 
+  .chip.selected {
+    border-color: #2e6f5e;
+    box-shadow: 0 0 0 3px rgba(46, 111, 94, 0.28);
+    background: #f0f8f4;
+  }
+
   .chip.in-slot {
     cursor: grab;
     width: 100%;
@@ -286,12 +294,15 @@
     text-align: center;
     display: grid;
     place-items: center;
-    font-size: clamp(11px, 1.7vw, 15px);
+    font-size: clamp(9px, 1.35vw, 13px);
+    line-height: 1.05;
     border: 1px solid #8f856f;
     background: #fffefa;
-    padding: 0 4px;
+    padding: 1px 2px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .chip.dragging {
@@ -335,6 +346,26 @@
   @media (max-width: 980px) {
     .app {
       grid-template-columns: 1fr;
+    }
+
+    .map-wrap {
+      width: max(100%, 860px);
+    }
+
+    .map-panel {
+      max-height: 72vh;
+    }
+
+    .chip {
+      font-size: 16px;
+      padding: 9px 12px;
+    }
+
+    .zone-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 12px;
+      font-size: 13px;
     }
   }
 </style>
@@ -763,6 +794,7 @@ let boxes = [];
 let chips = [];
 let dragging = null;
 let activeZone = null;
+let selectedChip = null;
 
 const reviewModes = {
   rivers: {
@@ -816,6 +848,12 @@ function clearResults() {
   });
 }
 
+function clearSelectedChip() {
+  if (!selectedChip) return;
+  selectedChip.classList.remove("selected");
+  selectedChip = null;
+}
+
 function setStatus(text) {
   statusEl.textContent = text;
 }
@@ -858,6 +896,7 @@ function placeChipInZone(chip, zone) {
   chip.dataset.zoneId = zone.dataset.id;
   chip.classList.add("in-slot");
   zone.querySelector(".slot").appendChild(chip);
+  clearSelectedChip();
 }
 
 function updateProgressText() {
@@ -908,6 +947,13 @@ function createZone(box) {
     const slot = document.createElement("div");
     slot.className = "slot";
     zone.appendChild(slot);
+
+    zone.addEventListener("click", () => {
+      if (!selectedChip) return;
+      placeChipInZone(selectedChip, zone);
+      clearResults();
+      updateProgressText();
+    });
   } else {
     const input = document.createElement("input");
     input.className = "zone-input";
@@ -935,6 +981,7 @@ function beginDrag(event) {
   if (activeAnswerMode !== "drag") return;
   const chip = event.currentTarget;
   event.preventDefault();
+  clearSelectedChip();
 
   const rect = chip.getBoundingClientRect();
   dragging = {
@@ -1001,12 +1048,26 @@ function createChip(box) {
   chip.className = "chip";
   chip.type = "button";
   chip.textContent = box.answer;
+  chip.title = box.answer;
   chip.dataset.id = String(box.id);
   chip.dataset.answer = box.answer;
   chip.addEventListener("pointerdown", beginDrag);
   chip.addEventListener("pointermove", moveDrag);
   chip.addEventListener("pointerup", endDrag);
   chip.addEventListener("pointercancel", endDrag);
+  chip.addEventListener("click", () => {
+    if (activeAnswerMode !== "drag") return;
+    if (dragging) return;
+
+    if (selectedChip === chip) {
+      clearSelectedChip();
+      return;
+    }
+
+    clearSelectedChip();
+    selectedChip = chip;
+    chip.classList.add("selected");
+  });
   return chip;
 }
 
@@ -1062,6 +1123,7 @@ function runCheck() {
 
 function resetBoard() {
   clearResults();
+  clearSelectedChip();
   if (activeAnswerMode === "drag") {
     chips.forEach((chip) => {
       moveChipToBank(chip);
@@ -1112,7 +1174,7 @@ async function init() {
   modeBadgeEl.textContent = answerConfig.label;
 
   if (activeAnswerMode === "drag") {
-    hintEl.textContent = `Drag each ${modeConfig.label.toLowerCase()} label into the numbered box on the map. You can move any label again at any time.`;
+    hintEl.textContent = `Drag each ${modeConfig.label.toLowerCase()} label into the numbered box on the map. On mobile, you can also tap a label, then tap a box.`;
     bankTitle.textContent = `${modeConfig.label} labels to drag`;
     bankSection.classList.remove("hidden");
     shuffleBtn.disabled = false;
