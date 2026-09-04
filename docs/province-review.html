@@ -242,11 +242,6 @@
       const typed = normalizeText(answerInputEl.value);
       const expected = normalizeProvinceName(current.province);
 
-      if (!typed) {
-        setStatus("Please type an answer first.", "bad");
-        return;
-      }
-
       if (normalizeProvinceName(typed) === expected) {
         setStatus("Correct! Great recall.", "good");
         correctAnswerEl.style.display = "none";
