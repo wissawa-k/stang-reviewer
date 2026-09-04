@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guess the Region Review</title>
+  <style>
+    :root {
+      --bg: #eef2f4;
+      --panel: #fbfdfd;
+      --line: #bfd0d8;
+      --ink: #1f2b33;
+      --accent: #2f5d86;
+      --ok: #2f7d32;
+      --bad: #b14633;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Sarabun", "Noto Sans Thai", "Tahoma", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 12%, #f7fbff 0%, rgba(247, 251, 255, 0) 40%),
+        radial-gradient(circle at 88% 90%, #dbe8ee 0%, rgba(219, 232, 238, 0) 36%),
+        var(--bg);
+      padding: 18px;
+    }
+
+    .panel {
+      width: min(920px, 100%);
+      margin: 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+      box-shadow: 0 12px 28px rgba(26, 42, 52, 0.1);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 4vw, 34px);
+      line-height: 1.15;
+    }
+
+    .sub {
+      margin: 0;
+      color: #4f616d;
+      line-height: 1.45;
+    }
+
+    .back-link {
+      width: fit-content;
+      color: #466276;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+      color: #2a4353;
+    }
+
+    .card {
+      border: 1px solid #c9d7de;
+      border-radius: 12px;
+      background: #ffffff;
+      padding: 14px;
+    }
+
+    .label {
+      margin: 0 0 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #587284;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    #province-name {
+      margin: 0;
+      font-size: clamp(30px, 5vw, 44px);
+      color: var(--accent);
+      line-height: 1.12;
+    }
+
+    #region-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    button {
+      border: 1px solid #adc0ca;
+      background: #f4f9fb;
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #e9f2f7;
+    }
+
+    button.region-btn.correct {
+      border-color: rgba(47, 125, 50, 0.75);
+      background: rgba(47, 125, 50, 0.12);
+      color: #1e6522;
+    }
+
+    button.region-btn.incorrect {
+      border-color: rgba(177, 70, 51, 0.75);
+      background: rgba(177, 70, 51, 0.12);
+      color: #7b2d1f;
+    }
+
+    #status {
+      border: 1px solid #c4d4dc;
+      border-radius: 10px;
+      background: #fbfeff;
+      padding: 10px;
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      font-size: 15px;
+    }
+
+    #status.good {
+      border-color: rgba(47, 125, 50, 0.65);
+      background: rgba(47, 125, 50, 0.1);
+      color: #1f6523;
+      font-weight: 700;
+    }
+
+    #status.bad {
+      border-color: rgba(177, 70, 51, 0.7);
+      background: rgba(177, 70, 51, 0.1);
+      color: #7b2d1f;
+      font-weight: 700;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    #next-btn.hidden {
+      display: none;
+    }
+
+    @media (max-width: 760px) {
+      #region-buttons {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <h1>Guess the Region</h1>
+    <p class="sub">A random province appears each round. Pick one of the six Thailand regions. After each guess, the Next button appears.</p>
+    <a class="back-link" href="index.html">← Back to choices</a>
+
+    <section class="card">
+      <p class="label">Province</p>
+      <h2 id="province-name">Loading...</h2>
+    </section>
+
+    <section class="card">
+      <p class="label">Choose the region</p>
+      <div id="region-buttons"></div>
+    </section>
+
+    <div id="status">Loading province data...</div>
+
+    <div class="controls">
+      <button id="next-btn" class="hidden" type="button">Next Province</button>
+    </div>
+  </main>
+
+  <script>
+    const provinceNameEl = document.getElementById("province-name");
+    const regionButtonsEl = document.getElementById("region-buttons");
+    const statusEl = document.getElementById("status");
+    const nextBtn = document.getElementById("next-btn");
+
+    const regionOptions = [
+      { key: "north", label: "Northern" },
+      { key: "northeast", label: "Northeastern" },
+      { key: "central", label: "Central" },
+      { key: "east", label: "Eastern" },
+      { key: "west", label: "Western" },
+      { key: "south", label: "Southern" }
+    ];
+
+    const regionLabels = Object.fromEntries(regionOptions.map((item) => [item.key, item.label]));
+
+    const provinceToRegion = {
+      "กรุงเทพมหานคร": "central",
+      "กระบี่": "south",
+      "กาญจนบุรี": "west",
+      "กาฬสินธุ์": "northeast",
+      "กำแพงเพชร": "north",
+      "ขอนแก่น": "northeast",
+      "จันทบุรี": "east",
+      "ฉะเชิงเทรา": "east",
+      "ชลบุรี": "east",
+      "ชัยนาท": "central",
+      "ชัยภูมิ": "northeast",
+      "ชุมพร": "south",
+      "เชียงราย": "north",
+      "เชียงใหม่": "north",
+      "ตรัง": "south",
+      "ตราด": "east",
+      "ตาก": "north",
+      "นครนายก": "central",
+      "นครปฐม": "central",
+      "นครพนม": "northeast",
+      "นครราชสีมา": "northeast",
+      "นครศรีธรรมราช": "south",
+      "นครสวรรค์": "north",
+      "นนทบุรี": "central",
+      "นราธิวาส": "south",
+      "น่าน": "north",
+      "บึงกาฬ": "northeast",
+      "บุรีรัมย์": "northeast",
+      "ปทุมธานี": "central",
+      "ประจวบคีรีขันธ์": "west",
+      "ปราจีนบุรี": "east",
+      "ปัตตานี": "south",
+      "พระนครศรีอยุธยา": "central",
+      "พังงา": "south",
+      "พัทลุง": "south",
+      "พิจิตร": "north",
+      "พิษณุโลก": "north",
+      "เพชรบุรี": "west",
+      "เพชรบูรณ์": "north",
+      "แพร่": "north",
+      "พะเยา": "north",
+      "ภูเก็ต": "south",
+      "มหาสารคาม": "northeast",
+      "มุกดาหาร": "northeast",
+      "แม่ฮ่องสอน": "north",
+      "ยโสธร": "northeast",
+      "ยะลา": "south",
+      "ร้อยเอ็ด": "northeast",
+      "ระนอง": "south",
+      "ระยอง": "east",
+      "ราชบุรี": "west",
+      "ลพบุรี": "central",
+      "ลำปาง": "north",
+      "ลำพูน": "north",
+      "เลย": "northeast",
+      "ศรีสะเกษ": "northeast",
+      "สกลนคร": "northeast",
+      "สงขลา": "south",
+      "สตูล": "south",
+      "สมุทรปราการ": "central",
+      "สมุทรสงคราม": "central",
+      "สมุทรสาคร": "central",
+      "สระแก้ว": "east",
+      "สระบุรี": "central",
+      "สิงห์บุรี": "central",
+      "สุโขทัย": "north",
+      "สุพรรณบุรี": "central",
+      "สุราษฎร์ธานี": "south",
+      "สุรินทร์": "northeast",
+      "หนองคาย": "northeast",
+      "หนองบัวลำภู": "northeast",
+      "อ่างทอง": "central",
+      "อุดรธานี": "northeast",
+      "อุตรดิตถ์": "north",
+      "อุทัยธานี": "north",
+      "อุบลราชธานี": "northeast",
+      "อำนาจเจริญ": "northeast"
+    };
+
+    let provinces = [];
+    let current = null;
+
+    function setStatus(text, tone = "") {
+      statusEl.classList.remove("good", "bad");
+      if (tone) {
+        statusEl.classList.add(tone);
+      }
+      statusEl.textContent = text;
+    }
+
+    function randomProvince(excludeId = null) {
+      if (provinces.length === 1) {
+        return provinces[0];
+      }
+
+      let picked = provinces[Math.floor(Math.random() * provinces.length)];
+      while (excludeId !== null && picked.id === excludeId) {
+        picked = provinces[Math.floor(Math.random() * provinces.length)];
+      }
+      return picked;
+    }
+
+    function clearButtonStates() {
+      regionButtonsEl.querySelectorAll(".region-btn").forEach((button) => {
+        button.classList.remove("correct", "incorrect");
+        button.disabled = false;
+      });
+    }
+
+    function showRound(province) {
+      current = province;
+      provinceNameEl.textContent = province.province;
+      clearButtonStates();
+      nextBtn.classList.add("hidden");
+      setStatus("Pick the region for this province.");
+    }
+
+    function revealAnswer(choiceKey, correctKey) {
+      regionButtonsEl.querySelectorAll(".region-btn").forEach((button) => {
+        const key = button.dataset.region;
+        button.disabled = true;
+        if (key === correctKey) {
+          button.classList.add("correct");
+        } else if (key === choiceKey) {
+          button.classList.add("incorrect");
+        }
+      });
+      nextBtn.classList.remove("hidden");
+    }
+
+    function chooseRegion(choiceKey) {
+      if (!current) return;
+
+      const correctKey = provinceToRegion[current.province];
+      if (!correctKey) {
+        setStatus(`Missing region mapping for ${current.province}`, "bad");
+        return;
+      }
+
+      if (choiceKey === correctKey) {
+        setStatus(`Correct! ${current.province} is in the ${regionLabels[correctKey]} region.`, "good");
+      } else {
+        setStatus(
+          `Wrong. ${current.province} is in the ${regionLabels[correctKey]} region, not ${regionLabels[choiceKey]}.`,
+          "bad"
+        );
+      }
+
+      revealAnswer(choiceKey, correctKey);
+    }
+
+    function createRegionButtons() {
+      regionButtonsEl.innerHTML = "";
+      regionOptions.forEach((region) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "region-btn";
+        button.dataset.region = region.key;
+        button.textContent = region.label;
+        button.addEventListener("click", () => chooseRegion(region.key));
+        regionButtonsEl.appendChild(button);
+      });
+    }
+
+    function nextRound() {
+      if (!provinces.length) return;
+      showRound(randomProvince(current ? current.id : null));
+    }
+
+    async function init() {
+      const response = await fetch("province.json", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Could not load province.json (${response.status})`);
+      }
+
+      provinces = await response.json();
+      if (!Array.isArray(provinces) || provinces.length === 0) {
+        throw new Error("province.json is empty or invalid");
+      }
+
+      const missing = provinces
+        .filter((item) => !provinceToRegion[item.province])
+        .map((item) => item.province);
+
+      if (missing.length > 0) {
+        throw new Error(`Missing region mapping for: ${missing.join(", ")}`);
+      }
+
+      createRegionButtons();
+      nextRound();
+    }
+
+    nextBtn.addEventListener("click", nextRound);
+
+    init().catch((error) => {
+      setStatus(`Failed to load data: ${error.message}`, "bad");
+      provinceNameEl.textContent = "Load failed";
+    });
+  </script>
+</body>
+</html>

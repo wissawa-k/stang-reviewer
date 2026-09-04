@@ -14,6 +14,7 @@
       --mountain: #8a5b2b;
       --mode-a: #2f6e60;
       --mode-b: #6c4b22;
+      --region: #2f5d86;
     }
 
     * { box-sizing: border-box; }
@@ -118,6 +119,12 @@
       box-shadow: 0 0 0 2px rgba(106, 74, 127, 0.15);
     }
 
+    .choice.region:hover,
+    .choice.region.selected {
+      border-color: var(--region);
+      box-shadow: 0 0 0 2px rgba(47, 93, 134, 0.18);
+    }
+
     #mode-step[hidden] { display: none; }
 
     .mode-card {
@@ -179,6 +186,7 @@
     .mode-card.drag h3 { color: var(--mode-a); }
     .mode-card.type h3 { color: var(--mode-b); }
     .mode-card.province h3 { color: #5c3d72; }
+    .mode-card.region h3 { color: #274d70; }
 
     .hidden { display: none; }
 
@@ -214,6 +222,11 @@
           <h3>Province Slogan</h3>
           <p>Read a random province name and type its slogan from memory.</p>
         </button>
+
+        <button class="choice region" type="button" data-topic="region" data-topic-label="Guess the Region">
+          <h3>Guess the Region</h3>
+          <p>See a random province and guess which Thailand region it belongs to.</p>
+        </button>
       </div>
     </section>
 
@@ -238,6 +251,11 @@
           <h3>Default</h3>
           <button id="start-province" class="start-btn" type="button">Start Default</button>
         </article>
+
+        <article id="region-card" class="mode-card region hidden">
+          <h3>Default</h3>
+          <button id="start-region" class="start-btn" type="button">Start Default</button>
+        </article>
       </div>
       <button id="back-to-topic" class="back-btn" type="button">Back to topic selection</button>
     </section>
@@ -250,10 +268,12 @@
     const startDragBtn = document.getElementById("start-drag");
     const startTypeBtn = document.getElementById("start-type");
     const startProvinceBtn = document.getElementById("start-province");
+    const startRegionBtn = document.getElementById("start-region");
     const backToTopicBtn = document.getElementById("back-to-topic");
     const dragCard = document.querySelector(".mode-card.drag");
     const typeCard = document.querySelector(".mode-card.type");
     const provinceCard = document.getElementById("province-card");
+    const regionCard = document.getElementById("region-card");
     let selectedTopic = null;
 
     function selectTopic(button) {
@@ -264,14 +284,16 @@
       selectedTopicEl.textContent = `${button.dataset.topicLabel} Review`;
       modeStep.hidden = false;
 
-      if (selectedTopic === "province") {
+      if (selectedTopic === "province" || selectedTopic === "region") {
         dragCard.classList.add("hidden");
         typeCard.classList.add("hidden");
-        provinceCard.classList.remove("hidden");
+        provinceCard.classList.toggle("hidden", selectedTopic !== "province");
+        regionCard.classList.toggle("hidden", selectedTopic !== "region");
       } else {
         dragCard.classList.remove("hidden");
         typeCard.classList.remove("hidden");
         provinceCard.classList.add("hidden");
+        regionCard.classList.add("hidden");
       }
     }
 
@@ -283,6 +305,10 @@
 
     function startProvinceReview() {
       window.location.href = "province-review.html";
+    }
+
+    function startRegionReview() {
+      window.location.href = "region-review.html";
     }
 
     topicButtons.forEach((button) => {
@@ -297,11 +323,13 @@
       dragCard.classList.remove("hidden");
       typeCard.classList.remove("hidden");
       provinceCard.classList.add("hidden");
+      regionCard.classList.add("hidden");
     });
 
     startDragBtn.addEventListener("click", () => startReview("drag"));
     startTypeBtn.addEventListener("click", () => startReview("type"));
     startProvinceBtn.addEventListener("click", startProvinceReview);
+    startRegionBtn.addEventListener("click", startRegionReview);
   </script>
 </body>
 </html>
